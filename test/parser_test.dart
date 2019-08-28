@@ -1,4 +1,5 @@
 import 'package:lalg2/lalg2.dart';
+import 'package:lalg2/parse_exception.dart';
 import 'package:test/test.dart';
 
 void testaParser(String source) {
@@ -7,9 +8,13 @@ void testaParser(String source) {
 }
 
 void main() {
-  // test('fonte vazia', () {
-  //   testaParser('');
-  // });
+  test('fonte vazia', () {
+    try {
+      testaParser('');
+    } on ParseException {
+      assert(true);
+    }
+  });
 
   test('exemplo sala de aula', () {
     testaParser(r'''program nome2

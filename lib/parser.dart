@@ -1,4 +1,5 @@
 import 'package:lalg2/lexer.dart';
+import 'package:lalg2/parse_exception.dart';
 import 'package:lalg2/token.dart';
 
 class Parser {
@@ -15,15 +16,21 @@ class Parser {
   }
 
   void isKind(TokenKind kind) {
+    if (_current == null) {
+      throw ParseException('Fim do arquivo fonte.');
+    }
     if (_current.kind == kind) {
       _current = _lexer.next();
     } else {
-      throw Exception(
+      throw ParseException(
           'Esperava o tipo de token $kind porém recebi ${_current.kind} na linha ${_current.line}.');
     }
   }
 
   bool maybeKind(TokenKind kind) {
+    if (_current == null) {
+      throw ParseException('Fim do arquivo fonte.');
+    }
     if (_current.kind == kind) {
       _current = _lexer.next();
       return true;
