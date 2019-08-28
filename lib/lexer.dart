@@ -15,9 +15,8 @@ enum _Estado {
   InicioComentarioBloco2,
   FimComentarioBloco2,
 }
-
 final _LETRAS = 'abcdefghijklmnopqrstuvwxyz';
-final _NUMEROS = '01234567890';
+final _NUMEROS = '0123456789';
 final _RESERVADAS = {
   "program": TokenKind.ReservadaProgram,
   "integer": TokenKind.ReservadaInteger,
@@ -215,7 +214,9 @@ class Lexer {
         case _Estado.FimComentarioBloco2:
           if (c == '/') {
             state = _Estado.Comeco;
+            break;
           }
+          state = _Estado.InicioComentarioBloco2;
           break;
         case _Estado.Invalido:
           kind = TokenKind.Invalid;

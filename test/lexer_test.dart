@@ -63,6 +63,12 @@ void main() {
     ]);
   });
 
+  test('comentários debtri de comentário 2 ', () {
+    testaLexer('/*  movie * asdf / */', <TokenKind>[
+      TokenKind.Eof,
+    ]);
+  });
+
   test('tokens válidos entre comentários 1', () {
     testaLexer('\$ + /* bla bla bla */ - foo', <TokenKind>[
       TokenKind.SimboloCifra,
