@@ -397,7 +397,11 @@ class Parser {
 
   // <fator> ::= ident |numero_int |numero_real | (<expressao>)
   void _fator() {
+    final id = _textoToken();
     if (maybeKind(TokenKind.Identificador)) {
+      if (_tabelas.last.find(id) == null) {
+        throw ParseException('símbolo não declarado', symbol: id);
+      }
       return;
     }
     if (maybeKind(TokenKind.LiteralInteiro)) {
