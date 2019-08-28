@@ -1,3 +1,1 @@
-int calculate() {
-  return 6 * 7;
-}
+export 'package:lalg2/lexer.dart';
