@@ -1,4 +1,5 @@
 class ParseException implements Exception {
   String message;
-  ParseException(this.message);
+  String symbol;
+  ParseException(this.message, {this.symbol});
 }

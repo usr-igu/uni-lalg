@@ -8,12 +8,91 @@ void testaParser(String source) {
 }
 
 void main() {
-  test('fonte vazia', () {
-    try {
-      testaParser('');
-    } on ParseException {
-      assert(true);
-    }
+  test('exemplo básico', () {
+    testaParser(r'''program asdf
+        var a: integer
+        begin
+          read(a)
+        end.''');
+  });
+
+  test('variável redeclarada', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            var ab: real  
+            begin
+              read(ab)
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException && e.message == 'elemento já declarado')));
+  });
+
+  test('usando argumento não declarado', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            begin
+              read(xx)
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException && e.message == 'símbolo não declarado')));
+  });
+
+  test('usando procedimento não declarado', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            begin
+              foo(ab)
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException && e.message == 'símbolo não declarado')));
+  });
+
+  test('muitos parâmetros para o procedimento', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            procedure foo(x: integer, y: real)
+            var a: integer
+            begin
+              a := x + y
+            end
+            begin
+              foo(ab;ab; ab)
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException && e.message == 'parâmetros em excesso')));
+  });
+
+  test('poucos parâmetros para o procedimento', () {
+    expect(
+        () => testaParser(r'''program foo
+            var xx: integer;
+            procedure foo(x: integer, y: real, z: integer)
+            var a: integer
+            begin
+              a := x + y
+            end
+            begin
+              foo(xx)
+            end.'''),
+        throwsA(predicate(
+            (e) => e is ParseException && e.message == 'falta parâmetros')));
+  });
+
+  test('operação com variáveis não declaradas', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            var bc: integer;
+            var cd: integer
+            begin
+              ab := bc + kk;
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException && e.message == 'símbolo não declarado')));
   });
 
   test('exemplo sala de aula', () {

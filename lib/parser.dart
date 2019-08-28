@@ -1,44 +1,60 @@
 import 'package:lalg2/lexer.dart';
 import 'package:lalg2/parse_exception.dart';
+import 'package:lalg2/table.dart';
 import 'package:lalg2/token.dart';
+
+enum _DeclType {
+  Variable,
+  Parameter,
+  Argument,
+}
 
 class Parser {
   Lexer _lexer;
-  TokenSpan _current;
-  final String source;
-  Parser(this.source) {
-    _lexer = Lexer(source);
+  TokenSpan _spanAtual;
+  List<Tabela> _tabelas;
+
+  final String fonte;
+
+  Parser(this.fonte) {
+    _lexer = Lexer(fonte);
+    _tabelas = List<Tabela>()..add(Tabela());
   }
 
   void parse() {
-    _current = _lexer.next();
+    _spanAtual = _lexer.next();
     _programa();
   }
 
   void isKind(TokenKind kind) {
-    if (_current == null) {
-      throw ParseException('Fim do arquivo fonte.');
+    if (_spanAtual == null) {
+      throw ParseException('fim do arquivo fonte.');
     }
-    if (_current.kind == kind) {
-      _current = _lexer.next();
+    if (_spanAtual.kind == kind) {
+      _spanAtual = _lexer.next();
     } else {
-      throw ParseException(
-          'Esperava o tipo de token $kind porém recebi ${_current.kind} na linha ${_current.line}.');
+      throw ParseException('tipos incompatíveis.');
     }
   }
 
   bool maybeKind(TokenKind kind) {
-    if (_current == null) {
-      throw ParseException('Fim do arquivo fonte.');
+    if (_spanAtual == null) {
+      throw ParseException('fim do arquivo fonte.');
     }
-    if (_current.kind == kind) {
-      _current = _lexer.next();
+    if (_spanAtual.kind == kind) {
+      _spanAtual = _lexer.next();
       return true;
     }
     return false;
   }
 
+  String _textoToken() {
+    return fonte.substring(
+        _spanAtual.start, _spanAtual.start + _spanAtual.length);
+  }
+
   //// REGRAS ////
+  ////////////////
   // <programa> ::= program ident <corpo> .
   void _programa() {
     isKind(TokenKind.ReservadaProgram);
@@ -74,7 +90,7 @@ class Parser {
   // <dc_v> ::= var <variaveis> : <tipo_var>
   bool _dcV() {
     if (maybeKind(TokenKind.ReservadaVar)) {
-      _variaveis();
+      _variaveis(_DeclType.Variable);
       isKind(TokenKind.SimboloDoisPontos);
       _tipoVar();
       return true;
@@ -83,30 +99,69 @@ class Parser {
   }
 
   // <tipo_var> ::= real | integer
+  // Ação semântica adicionar tipo da tabela de símbolos.
   bool _tipoVar() {
-    return maybeKind(TokenKind.ReservadaReal) ||
-        maybeKind(TokenKind.ReservadaInteger);
+    final tabela = _tabelas.last;
+    if (maybeKind(TokenKind.ReservadaReal)) {
+      tabela.setType('real');
+      return true;
+    } else if (maybeKind(TokenKind.ReservadaInteger)) {
+      tabela.setType('integer');
+      return true;
+    }
+    return false;
   }
 
   // <variaveis> ::= ident <mais_var>
-  void _variaveis() {
+  // Ação semântica: Adicionar identificadores na tabela de símbolo.
+  void _variaveis(_DeclType declType) {
+    final id = _textoToken();
+    final span = _spanAtual;
     isKind(TokenKind.Identificador);
-    _maisVar();
+    final tabela = _tabelas.last;
+    switch (declType) {
+      // Adicionar elementos na tabela.
+      case _DeclType.Variable:
+        tabela.push(Linha(id: id, span: span, kind: 'variable'));
+        break;
+      case _DeclType.Argument:
+        if (tabela.find(id) == null) {
+          throw ParseException('símbolo não declarado', symbol: id);
+        }
+        break;
+      case _DeclType.Parameter:
+        tabela.push(Linha(id: id, span: span, kind: 'parameter'));
+        break;
+    }
+    _maisVar(declType);
   }
 
   // <mais_var> ::= , <variaveis> | λ
-  void _maisVar() {
+  void _maisVar(_DeclType declType) {
     if (maybeKind(TokenKind.SimboloVirgula)) {
-      _variaveis();
+      _variaveis(declType);
     }
   }
 
   // <dc_p> ::= procedure ident <parametros> <corpo_p>
+  // Ação semântica: Adiciona procedimentos na tabela de símbolos.
   bool _dcP() {
     if (maybeKind(TokenKind.ReservadaProcedure)) {
+      final id = _textoToken();
+      final span = _spanAtual;
       isKind(TokenKind.Identificador);
+      // Tabela de símbolos mãe
+      final tabela = _tabelas.last;
+      // Gera a tabela do procedimento
+      var tabelaProc = Tabela();
+      tabela.push(
+          Linha(id: id, span: span, kind: 'procedure', table: tabelaProc));
+      // Empilha a tabela de procedimento
+      _tabelas.add(tabelaProc);
       _parametros();
       _corpoP();
+      // Desempilha tabela do procedimento
+      _tabelas.removeLast();
       return true;
     }
     return false;
@@ -122,7 +177,7 @@ class Parser {
 
   // <lista_par> ::= <variaveis> : <tipo_var> <mais_par>
   void _listaPar() {
-    _variaveis();
+    _variaveis(_DeclType.Parameter);
     isKind(TokenKind.SimboloDoisPontos);
     _tipoVar();
     _maisPar();
@@ -166,12 +221,16 @@ class Parser {
   }
 
   // <argumentos> ::= ident <mais_ident>
+  // Ação semântica: Verifica se a quantidade parâmetros não se ultrapassou o limite.
+  // Ação semântica: Verifica se a ordem e o tipo do parâmetro estão corretos
+  // TODO(Igor)
   void _argumentos() {
     isKind(TokenKind.Identificador);
     _maisIdent();
   }
 
   // <mais_ident> ::= ; <argumentos> | λ
+  // Ação semântica: Verifica se ainda tinham parâmetros para serem verificados.
   void _maisIdent() {
     if (maybeKind(TokenKind.SimboloPontoEVirgula)) {
       _argumentos();
@@ -206,11 +265,11 @@ class Parser {
   void _comando() {
     if (maybeKind(TokenKind.ReservadaRead)) {
       isKind(TokenKind.SimboloAbreParens);
-      _variaveis();
+      _variaveis(_DeclType.Argument);
       isKind(TokenKind.SimboloFechaParens);
     } else if (maybeKind(TokenKind.ReservadaWrite)) {
       isKind(TokenKind.SimboloAbreParens);
-      _variaveis();
+      _variaveis(_DeclType.Argument);
       isKind(TokenKind.SimboloFechaParens);
     } else if (maybeKind(TokenKind.ReservadaWhile)) {
       _condicao();
@@ -225,6 +284,13 @@ class Parser {
       isKind(TokenKind.SimboloCifra);
     } else {
       isKind(TokenKind.Identificador);
+      final tabela = _tabelas.last;
+      // TODO: Subir para o escopo de cima.
+      final id = _textoToken();
+      final proc = tabela.find(id);
+      if (proc == null) {
+        throw ParseException('símbolo não declarado', symbol: id);
+      }
       _restoIdent();
     }
   }

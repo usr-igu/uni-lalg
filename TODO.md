@@ -1,6 +1,6 @@
 # TODO
 
-- [] Variável ou procedimento não declarado
+- [ ] Variável ou procedimento não declarado
 - [ ] Variável ou procedimento declarado mais de uma vez dentro do mesmo escopo 
 - [ ] Uso de variáveis de escopo inadequado
 - [ ] ~~Read/write com variáveis de tipos diferentes~~
