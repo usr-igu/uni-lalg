@@ -19,6 +19,10 @@ class Tabela {
     return lines.firstWhere((l) => l.id == id, orElse: () => null);
   }
 
+  int countParameters() {
+    return lines.where((l) => l.kind == 'parameter').length;
+  }
+
   void setType(String type) {
     lines.where((t) => t.type == null).forEach((f) => f.type = type);
   }
@@ -33,6 +37,8 @@ class Linha {
   Linha({@required this.id, this.span, this.kind, this.type, this.table}) {
     if (this.kind != 'procedure') {
       assert(this.table == null);
+    } else {
+      assert(this.type == null);
     }
   }
 }

@@ -54,13 +54,13 @@ void main() {
     expect(
         () => testaParser(r'''program foo
             var ab: integer;
-            procedure foo(x: integer, y: real)
+            procedure foo(x: integer; y: real)
             var a: integer
             begin
               a := x + y
             end
             begin
-              foo(ab;ab; ab)
+              foo(ab;ab;ab)
             end.'''),
         throwsA(predicate((e) =>
             e is ParseException && e.message == 'parâmetros em excesso')));
@@ -70,13 +70,13 @@ void main() {
     expect(
         () => testaParser(r'''program foo
             var xx: integer;
-            procedure foo(x: integer, y: real, z: integer)
+            procedure baz(x: integer; y: real; z: integer)
             var a: integer
             begin
-              a := x + y
+              a := a + a
             end
             begin
-              foo(xx)
+              baz(xx)
             end.'''),
         throwsA(predicate(
             (e) => e is ParseException && e.message == 'falta parâmetros')));

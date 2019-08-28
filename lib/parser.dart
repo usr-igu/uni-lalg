@@ -213,9 +213,9 @@ class Parser {
   }
 
   // <lista_arg> ::= ( <argumentos> ) | λ
-  void _listaArg() {
+  void _listaArg(String id) {
     if (maybeKind(TokenKind.SimboloAbreParens)) {
-      _argumentos();
+      _argumentos(id, 0);
       isKind(TokenKind.SimboloFechaParens);
     }
   }
@@ -223,17 +223,31 @@ class Parser {
   // <argumentos> ::= ident <mais_ident>
   // Ação semântica: Verifica se a quantidade parâmetros não se ultrapassou o limite.
   // Ação semântica: Verifica se a ordem e o tipo do parâmetro estão corretos
-  // TODO(Igor)
-  void _argumentos() {
+  void _argumentos(String id, int count) {
     isKind(TokenKind.Identificador);
-    _maisIdent();
+    final proc = _tabelas.last.find(id);
+    if (proc.kind == 'procedure') {
+      if (count > proc.table.countParameters()) {
+        throw ParseException('parâmetros em excesso');
+      }
+    }
+    _maisIdent(id, count + 1);
   }
 
   // <mais_ident> ::= ; <argumentos> | λ
   // Ação semântica: Verifica se ainda tinham parâmetros para serem verificados.
-  void _maisIdent() {
+  void _maisIdent(String id, int count) {
     if (maybeKind(TokenKind.SimboloPontoEVirgula)) {
-      _argumentos();
+      _argumentos(id, count);
+    } else {
+      final proc = _tabelas.last.find(id);
+      if (proc != null) {
+        if (proc.kind == 'procedure') {
+          if (count < proc.table.countParameters()) {
+            throw ParseException('falta parâmetros', symbol: proc.id);
+          }
+        }
+      }
     }
   }
 
@@ -283,24 +297,24 @@ class Parser {
       _pFalsa();
       isKind(TokenKind.SimboloCifra);
     } else {
-      isKind(TokenKind.Identificador);
-      final tabela = _tabelas.last;
       // TODO: Subir para o escopo de cima.
+      final tabela = _tabelas.last;
       final id = _textoToken();
       final proc = tabela.find(id);
+      isKind(TokenKind.Identificador);
       if (proc == null) {
         throw ParseException('símbolo não declarado', symbol: id);
       }
-      _restoIdent();
+      _restoIdent(id);
     }
   }
 
 // <restoIdent> ::= := <expressao> | <lista_arg>
-  void _restoIdent() {
+  void _restoIdent(String id) {
     if (maybeKind(TokenKind.SimboloAtribuicao)) {
       _expressao();
     } else {
-      _listaArg();
+      _listaArg(id);
     }
   }
 
@@ -338,7 +352,14 @@ class Parser {
   }
 
   // <op_un> ::= + | - | λ
-  void _opUn() {}
+  void _opUn() {
+    if (maybeKind(TokenKind.SimboloMais)) {
+      return;
+    }
+    if (maybeKind(TokenKind.SimboloMenos)) {
+      return;
+    }
+  }
 
   // <outros_termos> ::= <op_ad> <termo> <outros_termos> | λ
   void _outrosTermos() {
