@@ -89,7 +89,7 @@ void main() {
             var bc: integer;
             var cd: integer
             begin
-              ab := bc + kk;
+              ab := bc + kk
             end.'''),
         throwsA(predicate((e) =>
             e is ParseException && e.message == 'símbolo não declarado')));

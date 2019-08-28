@@ -227,7 +227,7 @@ class Parser {
     isKind(TokenKind.Identificador);
     final proc = _tabelas.last.find(id);
     if (proc.kind == 'procedure') {
-      if (count > proc.table.countParameters()) {
+      if (count >= proc.table.countParameters()) {
         throw ParseException('parâmetros em excesso');
       }
     }
@@ -297,7 +297,6 @@ class Parser {
       _pFalsa();
       isKind(TokenKind.SimboloCifra);
     } else {
-      // TODO: Subir para o escopo de cima.
       final tabela = _tabelas.last;
       final id = _textoToken();
       final proc = tabela.find(id);
