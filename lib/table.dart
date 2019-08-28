@@ -19,6 +19,10 @@ class Tabela {
     return lines.firstWhere((l) => l.id == id, orElse: () => null);
   }
 
+  Linha elementAt(int index) {
+    return lines[index];
+  }
+
   int countParameters() {
     return lines.where((l) => l.kind == 'parameter').length;
   }

@@ -54,7 +54,7 @@ void main() {
     expect(
         () => testaParser(r'''program foo
             var ab: integer;
-            procedure foo(x: integer; y: real)
+            procedure foo(x, y: integer)
             var a: integer
             begin
               a := x + y
@@ -82,6 +82,59 @@ void main() {
             (e) => e is ParseException && e.message == 'falta parâmetros')));
   });
 
+  test('procedimento pode acessar variável de escopo pai', () {
+    testaParser(r'''program foo
+            var a,b: integer;
+            var xx: integer;
+            procedure baz(x, y: integer)
+            begin
+              xx := x + y
+            end
+            begin
+              a := 10;
+              b := 10;
+              baz(a; b)
+            end.''');
+  });
+
+  test('procedimento não pode acessar variável de escopo pai', () {
+    expect(
+        () => testaParser(r'''program foo
+            var a,b: integer;
+            procedure baz(x, y: integer)
+            begin
+              xx := x + y
+            end
+            begin
+              a := 10;
+              b := 10;
+              baz(a; b)
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException && e.message == 'símbolo não declarado')));
+  });
+
+  test('tipos incorretos em chamada de procedimento', () {
+    expect(
+        () => testaParser(r'''program foo
+            var a,b: integer;
+            var c: real;
+            procedure baz(x, y: real; z: integer)
+            var abc: real
+            begin
+              abc := x + y
+            end
+            begin
+              a := 10;
+              b := 10;
+              c := 10.0;
+              baz(a; b; c)
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException &&
+            e.message == 'tipo errado em chamada de procedimento')));
+  });
+
   test('operação com variáveis não declaradas', () {
     expect(
         () => testaParser(r'''program foo
@@ -93,6 +146,88 @@ void main() {
             end.'''),
         throwsA(predicate((e) =>
             e is ParseException && e.message == 'símbolo não declarado')));
+  });
+
+  test('tipos diferentes em soma', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            var bc: real;
+            var cd: integer
+            begin
+              cd := ab + bc
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException &&
+            e.message == 'tipos incompatíveis em expressão')));
+  });
+
+  test('tipos diferentes em subtração', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            var bc: real;
+            var cd: integer
+            begin
+              cd := ab - bc
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException &&
+            e.message == 'tipos incompatíveis em expressão')));
+  });
+
+  test('tipos diferentes em divisão', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            var bc: real;
+            var cd: integer
+            begin
+              cd := ab / bc
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException &&
+            e.message == 'tipos incompatíveis em expressão')));
+  });
+
+  test('tipos diferentes em multiplicação', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            var bc: real;
+            var cd: integer
+            begin
+              cd := ab * bc
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException &&
+            e.message == 'tipos incompatíveis em expressão')));
+  });
+
+  test('atribuição de real em inteiro', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            var bc: real
+            begin
+              ab := bc
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException &&
+            e.message == 'tipos incompatíveis em expressão')));
+  });
+
+  test('atribuição de inteiro em real', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            var bc: real
+            begin
+              bc := ab
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException &&
+            e.message == 'tipos incompatíveis em expressão')));
   });
 
   test('exemplo sala de aula', () {

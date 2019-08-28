@@ -9,6 +9,11 @@ enum _DeclType {
   Argument,
 }
 
+class _ParseValue {
+  String type;
+  _ParseValue({this.type});
+}
+
 class Parser {
   Lexer _lexer;
   TokenSpan _spanAtual;
@@ -224,11 +229,19 @@ class Parser {
   // Ação semântica: Verifica se a quantidade parâmetros não se ultrapassou o limite.
   // Ação semântica: Verifica se a ordem e o tipo do parâmetro estão corretos
   void _argumentos(String id, int count) {
+    final argumentoId = _textoToken();
     isKind(TokenKind.Identificador);
     final proc = _tabelas.last.find(id);
     if (proc.kind == 'procedure') {
       if (count >= proc.table.countParameters()) {
         throw ParseException('parâmetros em excesso');
+      }
+      final parametro = proc.table.elementAt(count);
+      if (parametro != null) {
+        final argumento = _tabelas.last.find(argumentoId);
+        if (parametro.type != argumento.type) {
+          throw ParseException('tipo errado em chamada de procedimento');
+        }
       }
     }
     _maisIdent(id, count + 1);
@@ -299,21 +312,37 @@ class Parser {
     } else {
       final tabela = _tabelas.last;
       final id = _textoToken();
-      final proc = tabela.find(id);
+      var identificador = tabela.find(id);
       isKind(TokenKind.Identificador);
-      if (proc == null) {
-        throw ParseException('símbolo não declarado', symbol: id);
+
+      if (identificador == null) {
+        // Sobe no escopo pai se ele existir
+        try {
+          final tabelaPai = _tabelas.elementAt(_tabelas.length - 2);
+          final identificadorPai = tabelaPai.find(id);
+          if (identificadorPai == null) {
+            throw ParseException('símbolo não declarado', symbol: id);
+          } else {
+            identificador = identificadorPai;
+          }
+        } catch (e) {
+          throw ParseException('símbolo não declarado', symbol: id);
+        }
       }
-      _restoIdent(id);
+      final restoIdent = _restoIdent(id);
+      if (restoIdent != null && restoIdent.type != identificador.type) {
+        throw ParseException('tipos incompatíveis em expressão');
+      }
     }
   }
 
 // <restoIdent> ::= := <expressao> | <lista_arg>
-  void _restoIdent(String id) {
+  _ParseValue _restoIdent(String id) {
     if (maybeKind(TokenKind.SimboloAtribuicao)) {
-      _expressao();
+      return _expressao();
     } else {
       _listaArg(id);
+      return null;
     }
   }
 
@@ -344,10 +373,17 @@ class Parser {
     isKind(TokenKind.SimboloMenorQue);
   }
 
-// <expressao> ::= <termo> <outros_termos>
-  void _expressao() {
-    _termo();
-    _outrosTermos();
+  // <expressao> ::= <termo> <outros_termos>
+  // Ação semântica: Verificar tipos em expressões.
+  _ParseValue _expressao() {
+    final termo = _termo();
+    final outrosTermos = _outrosTermos();
+    if (outrosTermos != null) {
+      if (termo.type != outrosTermos.type) {
+        throw ParseException('tipos incompatíveis em expressão');
+      }
+    }
+    return termo;
   }
 
   // <op_un> ::= + | - | λ
@@ -361,11 +397,13 @@ class Parser {
   }
 
   // <outros_termos> ::= <op_ad> <termo> <outros_termos> | λ
-  void _outrosTermos() {
+  _ParseValue _outrosTermos() {
     if (_opAd()) {
-      _termo();
+      final termo = _termo();
       _outrosTermos();
+      return termo;
     }
+    return null;
   }
 
   // <op_ad> ::= + | -
@@ -375,18 +413,28 @@ class Parser {
   }
 
   // <termo> ::= <op_un> <fator> <mais_fatores>
-  void _termo() {
+  // Ação semântica: Verificar tipos em expressões.
+  _ParseValue _termo() {
     _opUn();
-    _fator();
-    _maisFatores();
+    final fator = _fator();
+    final maisFatores = _maisFatores();
+    if (maisFatores != null) {
+      if (fator.type != maisFatores.type) {
+        throw ParseException('tipos incompatíveis em expressão');
+      }
+    }
+    return fator;
   }
 
   // <mais_fatores>::= <op_mul> <fator> <mais_fatores> | λ
-  void _maisFatores() {
+  // Ação semântica: Verificar tipos em expressões.
+  _ParseValue _maisFatores() {
     if (_opMul()) {
-      _fator();
+      final fator = _fator();
       _maisFatores();
+      return fator;
     }
+    return null;
   }
 
   // <op_mul> ::= * | /
@@ -396,22 +444,25 @@ class Parser {
   }
 
   // <fator> ::= ident |numero_int |numero_real | (<expressao>)
-  void _fator() {
+  // Ação semântica: Verificar tipos em expressões.
+  _ParseValue _fator() {
     final id = _textoToken();
     if (maybeKind(TokenKind.Identificador)) {
-      if (_tabelas.last.find(id) == null) {
+      final line = _tabelas.last.find(id);
+      if (line == null) {
         throw ParseException('símbolo não declarado', symbol: id);
       }
-      return;
+      return _ParseValue(type: line.type);
     }
     if (maybeKind(TokenKind.LiteralInteiro)) {
-      return;
+      return _ParseValue(type: 'integer');
     }
     if (maybeKind(TokenKind.LiteralReal)) {
-      return;
+      return _ParseValue(type: 'real');
     }
     isKind(TokenKind.SimboloAbreParens);
-    _expressao();
+    final expressao = _expressao();
     isKind(TokenKind.SimboloFechaParens);
+    return expressao;
   }
 }
