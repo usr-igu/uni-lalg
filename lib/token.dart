@@ -1,5 +1,11 @@
+import 'package:meta/meta.dart';
+
 class TokenSpan {
-  TokenSpan({this.line, this.start, this.length, this.kind});
+  TokenSpan(
+      {@required this.line,
+      @required this.start,
+      @required this.length,
+      @required this.kind});
   final int line;
   final int start;
   final int length;

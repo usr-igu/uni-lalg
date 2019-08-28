@@ -6,7 +6,7 @@ description: O um compilador para a linguagem lalg.
 
 environment:
   sdk: '>=2.4.0 <3.0.0'
-
+  meta: ^1.1.7  
 #dependencies:
 #  path: ^1.6.0
 
