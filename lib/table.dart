@@ -1,30 +1,25 @@
 import 'package:lalg2/parse_exception.dart';
-import 'package:lalg2/token.dart';
 import 'package:meta/meta.dart';
 
-class Tabela {
-  List<Linha> lines;
-  Tabela() {
-    lines = List<Linha>();
+class TabelaDeSimbolos {
+  List<Simbolo> lines;
+  TabelaDeSimbolos() {
+    lines = List<Simbolo>();
   }
 
-  void push(Linha line) {
-    if (lines.any((l) => l.id == line.id && l.kind == line.kind)) {
+  void push(Simbolo line) {
+    if (lines.any((l) => l.id == line.id && l.category == line.category)) {
       throw ParseException('elemento já declarado');
     }
     lines.add(line);
   }
 
-  Linha find(String id) {
+  Simbolo find(String id) {
     return lines.firstWhere((l) => l.id == id, orElse: () => null);
   }
 
-  Linha elementAt(int index) {
-    return lines[index];
-  }
-
   int countParameters() {
-    return lines.where((l) => l.kind == 'parameter').length;
+    return lines.where((l) => l.category == 'parameter').length;
   }
 
   void setType(String type) {
@@ -32,14 +27,15 @@ class Tabela {
   }
 }
 
-class Linha {
+class Simbolo {
   String id;
-  TokenSpan span;
-  String kind;
+  String category;
   String type;
-  Tabela table;
-  Linha({@required this.id, this.span, this.kind, this.type, this.table}) {
-    if (this.kind != 'procedure') {
+  int address;
+  TabelaDeSimbolos table;
+  Simbolo(
+      {@required this.id, this.category, this.type, this.table, this.address}) {
+    if (this.category != 'procedure') {
       assert(this.table == null);
     } else {
       assert(this.type == null);
