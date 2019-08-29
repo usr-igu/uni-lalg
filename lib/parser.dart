@@ -246,8 +246,9 @@ class Parser {
   // Ação semântica: Verifica se a quantidade parâmetros não se ultrapassou o limite.
   // Ação semântica: Verifica se a ordem e o tipo do parâmetro estão corretos
   void _argumentos(String id, int count) {
+    final ident = _textoToken();
     isKind(TokenKind.Identificador);
-    final simbolo = Simbolo(id: id);
+    final simbolo = Simbolo(id: ident);
     _simbolos.add(simbolo);
     // final proc = _tabelas.last.find(id);
     // if (proc.kind == 'procedure') {
@@ -329,9 +330,8 @@ class Parser {
       _pFalsa();
       isKind(TokenKind.SimboloCifra);
     } else {
-      final tabela = _tabelas.last;
       final id = _textoToken();
-      var identificador = tabela.find(id);
+      var identificador = _tabelas.last.find(id);
       isKind(TokenKind.Identificador);
       if (identificador == null) {
         // Sobe no escopo pai se ele existir
@@ -348,9 +348,26 @@ class Parser {
         }
       }
       _restoIdent(id);
-      // if (restoIdent != null && restoIdent.type != identificador.type) {
-      //   throw ParseException('tipos incompatíveis em expressão');
-      // }
+      // Verifica argumentos
+      if (identificador.category == "procedure") {
+        final parametros = identificador.table.parametros();
+        if (_simbolos.length < parametros.length) {
+          throw ParseException('falta parâmetros');
+        } else if (_simbolos.length > parametros.length) {
+          throw ParseException('parâmetros em excesso');
+        }
+        while (_simbolos.isNotEmpty) {
+          final argumento = _simbolos.removeLast();
+          final simbolo = _tabelas.last.find(argumento.id);
+          if (simbolo == null) {
+            throw ParseException('símbolo não declarado');
+          }
+          final parametro = parametros.removeLast();
+          if (simbolo.type != parametro.type) {
+            throw ParseException('tipo errado em chamada de procedimento');
+          }
+        }
+      }
     }
   }
 
@@ -396,11 +413,6 @@ class Parser {
   _ParseValue _expressao() {
     final termo = _termo();
     _outrosTermos();
-    // if (outrosTermos != null) {
-    //   if (termo.type != outrosTermos.type) {
-    //     throw ParseException('tipos incompatíveis em expressão');
-    //   }
-    // }
     return termo;
   }
 

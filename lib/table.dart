@@ -18,6 +18,10 @@ class TabelaDeSimbolos {
     return lines.firstWhere((l) => l.id == id, orElse: () => null);
   }
 
+  List<Simbolo> parametros() {
+    return lines.where((t) => t.category == 'parameter').toList();
+  }
+
   int countParameters() {
     return lines.where((l) => l.category == 'parameter').length;
   }
