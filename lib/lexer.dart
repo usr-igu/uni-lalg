@@ -38,7 +38,7 @@ class Lexer {
   final String source;
   Lexer(this.source);
 
-  int _line = 0;
+  int _line = 1;
   int _position = 0;
 
   TokenSpan next() {

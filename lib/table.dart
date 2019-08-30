@@ -22,10 +22,6 @@ class TabelaDeSimbolos {
     return lines.where((t) => t.category == 'parameter').toList();
   }
 
-  int countParameters() {
-    return lines.where((l) => l.category == 'parameter').length;
-  }
-
   void setType(String type) {
     lines.where((t) => t.type == null).forEach((f) => f.type = type);
   }

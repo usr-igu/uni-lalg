@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:developer';
 
 import 'package:lalg2/lexer.dart';
 import 'package:lalg2/parse_exception.dart';
@@ -9,11 +10,6 @@ enum _DeclType {
   Variable,
   Parameter,
   Argument,
-}
-
-class _ParseValue {
-  String type;
-  _ParseValue({this.type});
 }
 
 class Parser {
@@ -45,7 +41,7 @@ class Parser {
     if (_spanAtual.kind == kind) {
       _spanAtual = _lexer.next();
     } else {
-      throw ParseException('tipos incompatíveis.');
+      throw ParseException('token não esperado');
     }
   }
 
@@ -130,7 +126,7 @@ class Parser {
   void _variaveis(_DeclType declType) {
     final id = _textoToken();
     isKind(TokenKind.Identificador);
-    final tabela = _tabelas.last;
+    // final tabela = _tabelas.last;
     // Adicionar elementos na tabela.
     switch (declType) {
       case _DeclType.Variable:
@@ -139,7 +135,7 @@ class Parser {
         _simbolos.add(simbolo);
         break;
       case _DeclType.Argument:
-        if (tabela.find(id) == null) {
+        if (_tabelas.last.find(id) == null) {
           throw ParseException('símbolo não declarado', symbol: id);
         }
         break;
@@ -176,6 +172,7 @@ class Parser {
           address: _address++));
       // Empilha a tabela de procedimento
       _tabelas.add(tabelaProc);
+      _simbolos.clear();
       _parametros();
       _corpoP();
       // Desempilha tabela do procedimento
@@ -235,9 +232,9 @@ class Parser {
   }
 
   // <lista_arg> ::= ( <argumentos> ) | λ
-  void _listaArg(String id) {
+  void _listaArg() {
     if (maybeKind(TokenKind.SimboloAbreParens)) {
-      _argumentos(id, 0);
+      _argumentos();
       isKind(TokenKind.SimboloFechaParens);
     }
   }
@@ -245,43 +242,20 @@ class Parser {
   // <argumentos> ::= ident <mais_ident>
   // Ação semântica: Verifica se a quantidade parâmetros não se ultrapassou o limite.
   // Ação semântica: Verifica se a ordem e o tipo do parâmetro estão corretos
-  void _argumentos(String id, int count) {
+  void _argumentos() {
     final ident = _textoToken();
     isKind(TokenKind.Identificador);
     final simbolo = Simbolo(id: ident);
-    _simbolos.add(simbolo);
-    // final proc = _tabelas.last.find(id);
-    // if (proc.kind == 'procedure') {
-    //   if (count >= proc.table.countParameters()) {
-    //     throw ParseException('parâmetros em excesso');
-    //   }
-    //   final parametro = proc.table.elementAt(count);
-    //   if (parametro != null) {
-    //     final argumento = _tabelas.last.find(argumentoId);
-    //     if (parametro.type != argumento.type) {
-    //       throw ParseException('tipo errado em chamada de procedimento');
-    //     }
-    //   }
-    // }
-    _maisIdent(id, count + 1);
+    _simbolos.addFirst(simbolo);
+    _maisIdent();
   }
 
   // <mais_ident> ::= ; <argumentos> | λ
   // Ação semântica: Verifica se ainda tinham parâmetros para serem verificados.
-  void _maisIdent(String id, int count) {
+  void _maisIdent() {
     if (maybeKind(TokenKind.SimboloPontoEVirgula)) {
-      _argumentos(id, count);
+      _argumentos();
     }
-    // else {
-    //   final proc = _tabelas.last.find(id);
-    //   if (proc != null) {
-    //     if (proc.kind == 'procedure') {
-    //       if (count < proc.table.countParameters()) {
-    //         throw ParseException('falta parâmetros', symbol: proc.id);
-    //       }
-    //     }
-    //   }
-    // }
   }
 
   // <pfalsa> ::= else <comandos> | λ
@@ -347,7 +321,7 @@ class Parser {
           throw ParseException('símbolo não declarado', symbol: id);
         }
       }
-      _restoIdent(id);
+      _restoIdent(identificador);
       // Verifica argumentos
       if (identificador.category == "procedure") {
         final parametros = identificador.table.parametros();
@@ -357,7 +331,7 @@ class Parser {
           throw ParseException('parâmetros em excesso');
         }
         while (_simbolos.isNotEmpty) {
-          final argumento = _simbolos.removeLast();
+          final argumento = _simbolos.removeFirst();
           final simbolo = _tabelas.last.find(argumento.id);
           if (simbolo == null) {
             throw ParseException('símbolo não declarado');
@@ -372,12 +346,17 @@ class Parser {
   }
 
 // <restoIdent> ::= := <expressao> | <lista_arg>
-  _ParseValue _restoIdent(String id) {
+  void _restoIdent(Simbolo identificador) {
     if (maybeKind(TokenKind.SimboloAtribuicao)) {
-      return _expressao();
+      _expressao();
+      while (_simbolos.isNotEmpty) {
+        final simbolo = _simbolos.removeFirst();
+        if (simbolo.type != identificador.type) {
+          throw ParseException('tipos incompatíveis em expressão');
+        }
+      }
     } else {
-      _listaArg(id);
-      return null;
+      _listaArg();
     }
   }
 
@@ -386,6 +365,10 @@ class Parser {
     _expressao();
     _relacao();
     _expressao();
+    var simbolo = _simbolos.removeFirst();
+    if (_simbolos.any((t) => t.type != simbolo.type)) {
+      throw ParseException('tipos incompatíveis em relação');
+    }
   }
 
 // <relacao>::= = | <> | >= | <= | > | <
@@ -410,10 +393,9 @@ class Parser {
 
   // <expressao> ::= <termo> <outros_termos>
   // Ação semântica: Verificar tipos em expressões.
-  _ParseValue _expressao() {
-    final termo = _termo();
+  void _expressao() {
+    _termo();
     _outrosTermos();
-    return termo;
   }
 
   // <op_un> ::= + | - | λ
@@ -427,13 +409,11 @@ class Parser {
   }
 
   // <outros_termos> ::= <op_ad> <termo> <outros_termos> | λ
-  _ParseValue _outrosTermos() {
+  void _outrosTermos() {
     if (_opAd()) {
-      final termo = _termo();
+      _termo();
       _outrosTermos();
-      return termo;
     }
-    return null;
   }
 
   // <op_ad> ::= + | -
@@ -444,27 +424,19 @@ class Parser {
 
   // <termo> ::= <op_un> <fator> <mais_fatores>
   // Ação semântica: Verificar tipos em expressões.
-  _ParseValue _termo() {
+  void _termo() {
     _opUn();
-    final fator = _fator();
+    _fator();
     _maisFatores();
-    // if (maisFatores != null) {
-    //   if (fator.type != maisFatores.type) {
-    //     throw ParseException('tipos incompatíveis em expressão');
-    //   }
-    // }
-    return fator;
   }
 
   // <mais_fatores>::= <op_mul> <fator> <mais_fatores> | λ
   // Ação semântica: Verificar tipos em expressões.
-  _ParseValue _maisFatores() {
+  void _maisFatores() {
     if (_opMul()) {
-      final fator = _fator();
+      _fator();
       _maisFatores();
-      return fator;
     }
-    return null;
   }
 
   // <op_mul> ::= * | /
@@ -475,24 +447,23 @@ class Parser {
 
   // <fator> ::= ident |numero_int |numero_real | (<expressao>)
   // Ação semântica: Verificar tipos em expressões.
-  _ParseValue _fator() {
+  void _fator() {
     final id = _textoToken();
     if (maybeKind(TokenKind.Identificador)) {
       final line = _tabelas.last.find(id);
       if (line == null) {
         throw ParseException('símbolo não declarado', symbol: id);
       }
-      return _ParseValue(type: line.type);
+      _simbolos.add(line);
+    } else if (maybeKind(TokenKind.LiteralInteiro)) {
+      _simbolos
+          .add(Simbolo(id: 'literal', type: 'integer', category: 'constant'));
+    } else if (maybeKind(TokenKind.LiteralReal)) {
+      _simbolos.add(Simbolo(id: 'literal', type: 'real', category: 'constant'));
+    } else {
+      isKind(TokenKind.SimboloAbreParens);
+      _expressao();
+      isKind(TokenKind.SimboloFechaParens);
     }
-    if (maybeKind(TokenKind.LiteralInteiro)) {
-      return _ParseValue(type: 'integer');
-    }
-    if (maybeKind(TokenKind.LiteralReal)) {
-      return _ParseValue(type: 'real');
-    }
-    isKind(TokenKind.SimboloAbreParens);
-    final expressao = _expressao();
-    isKind(TokenKind.SimboloFechaParens);
-    return expressao;
   }
 }

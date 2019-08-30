@@ -230,6 +230,21 @@ void main() {
             e.message == 'tipos incompatíveis em expressão')));
   });
 
+  test('tipos diferentes em relação', () {
+    expect(
+        () => testaParser(r'''program foo
+            var ab: integer;
+            var bc: real
+            begin
+              if ab > bc then
+                write(ab + bc)
+              $
+            end.'''),
+        throwsA(predicate((e) =>
+            e is ParseException &&
+            e.message == 'tipos incompatíveis em relação')));
+  });
+
   test('exemplo sala de aula', () {
     testaParser(r'''program nome2
         /*exe*mplo2*/
