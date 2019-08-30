@@ -219,7 +219,7 @@ void main() {
             var ab: integer;
             var bc: real
             begin
-              ab := ba
+              ab := bc
             end.'''),
         throwsA(predicate((e) =>
             e is ParseException &&
