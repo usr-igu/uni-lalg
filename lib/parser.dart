@@ -512,12 +512,23 @@ class Parser {
   void _fator() {
     final id = _textoToken();
     if (maybeKind(TokenKind.Identificador)) {
-      final line = _tabelas.last.find(id);
-      if (line == null) {
-        throw ParseException('símbolo não declarado', symbol: id);
+      var identificador = _tabelas.last.find(id);
+      if (identificador == null) {
+        // Sobe no escopo pai se ele existir
+        try {
+          final tabelaPai = _tabelas.elementAt(_tabelas.length - 2);
+          final identificadorPai = tabelaPai.find(id);
+          if (identificadorPai == null) {
+            throw ParseException('símbolo não declarado', symbol: id);
+          } else {
+            identificador = identificadorPai;
+          }
+        } catch (e) {
+          throw ParseException('símbolo não declarado', symbol: id);
+        }
       }
-      _simbolos.add(line);
-      _c.add('CRVL ${line.address}($id)');
+      _simbolos.add(identificador);
+      _c.add('CRVL ${identificador.address}($id)');
       _relativo++;
     } else if (maybeKind(TokenKind.LiteralInteiro)) {
       _simbolos

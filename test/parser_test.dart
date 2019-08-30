@@ -265,6 +265,28 @@ void main() {
                 end.''');
   });
 
+  test('exemplo material geração de código', () {
+    testaParser(r'''program ex1
+              var x, y: integer;
+              procedure p
+              var z: integer
+              begin
+                  z := x;
+                  x := x - 1;
+                  if x > 1 then
+                      x := z
+                  else
+                      y := 1;
+                      y := y * z
+                  $
+              end
+              begin
+                  read(x);
+                  p;
+                  write(x, y)
+              end.''');
+  });
+
   test('exemplo sala de aula', () {
     testaParser(r'''program nome2
         /*exe*mplo2*/
