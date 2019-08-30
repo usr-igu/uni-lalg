@@ -8,7 +8,9 @@ main(List<String> arguments) {
   var parser = lalg2.Parser(source);
   try {
     parser.parse();
-    print(parser.c);
+    for (var i = 0; i < parser.c.length; i++) {
+      print('$i: ${parser.c[i]}');
+    }
     parser.execute();
   } on ParseException catch (e) {
     print(e.message);

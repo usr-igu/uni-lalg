@@ -34,112 +34,119 @@ class Parser {
   }
 
   void execute() {
-    var d = List<double>(32);
-    var s = 0;
+    var d = List<num>();
     var i = 0;
     while (true) {
       final parts = c[i].split(' ');
+      print(parts);
       final instr = parts[0];
-      final data = parts.length > 1 ? double.parse(parts[1]) : null;
+      final data = parts.length > 1 ? num.parse(parts[1]) : null;
       if (instr == 'CRCT') {
-        s += 1;
-        d[s] = data;
+        d.add(data);
       } else if (instr == 'CRVL') {
-        s += 1;
-        d[s] = d[data.floor()];
+        d.add(d[data.floor()]);
       } else if (instr == 'SOMA') {
-        d[s - 1] = d[s - 1] + d[s];
-        s -= 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        d.add(s + p);
       } else if (instr == 'SUBT') {
-        d[s - 1] = d[s - 1] - d[s];
-        s -= 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        d.add(s - p);
       } else if (instr == 'MULT') {
-        d[s - 1] = d[s - 1] * d[s];
-        s -= 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        d.add(s * p);
       } else if (instr == 'DIVI') {
-        d[s - 1] = d[s - 1] / d[s];
-        s -= 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        d.add(s / p);
       } else if (instr == 'INVE') {
-        d[s] = -d[s];
+        final p = -(d.removeLast());
+        d.add(p);
       } else if (instr == 'CPME') {
-        if (d[s - 1] < d[s]) {
-          d[s - 1] = 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        if (s < p) {
+          d.add(1);
         } else {
-          d[s - 1] = 0;
+          d.add(0);
         }
-        s -= 1;
       } else if (instr == 'CPMA') {
-        if (d[s - 1] > d[s]) {
-          d[s - 1] = 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        if (s > p) {
+          d.add(1);
         } else {
-          d[s - 1] = 0;
+          d.add(0);
         }
-        s -= 1;
       } else if (instr == 'CPIG') {
-        if (d[s - 1] == d[s]) {
-          d[s - 1] = 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        if (s == p) {
+          d.add(1);
         } else {
-          d[s - 1] = 0;
+          d.add(0);
         }
-        s -= 1;
       } else if (instr == 'CPES') {
-        if (d[s - 1] != d[s]) {
-          d[s - 1] = 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        if (s != p) {
+          d.add(1);
         } else {
-          d[s - 1] = 0;
+          d.add(0);
         }
-        s -= 1;
       } else if (instr == 'CPMI') {
-        if (d[s - 1] <= d[s]) {
-          d[s - 1] = 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        if (s <= p) {
+          d.add(1);
         } else {
-          d[s - 1] = 0;
+          d.add(0);
         }
-        s -= 1;
       } else if (instr == 'CPMAI') {
-        if (d[s - 1] >= d[s]) {
-          d[s - 1] = 1;
+        final p = d.removeLast();
+        final s = d.removeLast();
+        if (s >= p) {
+          d.add(1);
         } else {
-          d[s - 1] = 0;
+          d.add(0);
         }
-        s -= 1;
       } else if (instr == 'ARMZ') {
-        d[data.floor()] = d[s];
-        s -= 1;
+        d[data] = d.removeLast();
       } else if (instr == 'DSVI') {
-        i = data.floor();
+        i = data - 1;
       } else if (instr == 'DSVF') {
-        if (d[s] == 0) {
-          i = data.floor();
+        final p = d.removeLast();
+        if (p == 0) {
+          i = data - 1;
         }
-        s -= 1;
       } else if (instr == 'LEIT') {
-        s += 1;
-        final valor = stdin.readLineSync();
-        final valorDouble = double.parse(valor.trim());
-        d[s] = valorDouble;
+        print('digite um número');
+        final entrada = stdin.readLineSync();
+        final valor = num.parse(entrada.trim());
+        d.add(valor);
       } else if (instr == 'IMPR') {
-        print(d[s]);
-        s -= 1;
+        print(d.removeLast());
       } else if (instr == 'ALME') {
-        s += data.floor();
+        d.add(0);
       } else if (instr == 'INPP') {
-        s -= 1;
       } else if (instr == 'PARA') {
         return;
       } else if (instr == 'PARAM') {
-        s += 1;
-        d[s] = d[data.floor()];
+        d.add(d[data.toInt()]);
       } else if (instr == 'PUSHER') {
-        s += 1;
-        d[s] = data;
+        d.add(data.toInt());
       } else if (instr == 'CHPR') {
-        i = data.floor();
+        i = data - 1;
       } else if (instr == 'DESM') {
-        s -= data.floor();
+        var c = data.toInt();
+        while (c > 0) {
+          d.removeLast();
+          c--;
+        }
       } else if (instr == 'RTPR') {
-        i -= d[s].floor();
-        s -= 1;
+        i = d.removeLast().toInt() - 1;
       } else {
         throw ParseException('instrução inválida');
       }
