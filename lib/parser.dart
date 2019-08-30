@@ -20,8 +20,7 @@ class Parser {
   Queue<Simbolo> _simbolos;
 
   // Geração de código
-  List<String> _c;
-  int _relativo = 0;
+  List<String> c;
 
   final String fonte;
 
@@ -29,16 +28,13 @@ class Parser {
     _lexer = Lexer(fonte);
     _tabelas = List()..add(TabelaDeSimbolos());
     _simbolos = Queue();
-    _c = List<String>();
+    c = List<String>();
     _address = 0;
   }
 
   void parse() {
     _spanAtual = _lexer.next();
     _programa();
-    for (var i = 0; i < _c.length; i++) {
-      print('$i: ${_c[i]}');
-    }
   }
 
   void isKind(TokenKind kind) {
@@ -73,13 +69,12 @@ class Parser {
   ////////////////
   // <programa> ::= program ident <corpo> .
   void _programa() {
-    _c.add('INPP');
-    _relativo++;
+    c.add('INPP');
     isKind(TokenKind.ReservadaProgram);
     isKind(TokenKind.Identificador);
     _corpo();
     isKind(TokenKind.SimboloPontoFinal);
-    _c.add('PARA');
+    c.add('PARA');
   }
 
   // <corpo> ::= <dc> begin <comandos> end
@@ -115,6 +110,7 @@ class Parser {
       while (_simbolos.isNotEmpty) {
         final simbolo = _simbolos.removeFirst()..type = type;
         _tabelas.last.push(simbolo);
+        c.add('ALME 1');
       }
       return true;
     }
@@ -144,8 +140,6 @@ class Parser {
         final simbolo =
             Simbolo(id: id, category: 'variable', address: _address++);
         _simbolos.add(simbolo);
-        _c.add('ALME 1');
-        _relativo++;
         break;
       case _DeclType.Argument:
         final simbolo = _tabelas.last.find(id);
@@ -174,6 +168,7 @@ class Parser {
   // Ação semântica: Adiciona procedimentos na tabela de símbolos.
   bool _dcP() {
     if (maybeKind(TokenKind.ReservadaProcedure)) {
+      final procedurePos = c.length;
       final id = _textoToken();
       isKind(TokenKind.Identificador);
       // Tabela de símbolos mãe
@@ -184,12 +179,19 @@ class Parser {
           id: id,
           category: 'procedure',
           table: tabelaProc,
-          address: _address++));
+          address: _address++,
+          position: c.length));
       // Empilha a tabela de procedimento
+      c.add('DSVI ???');
       _tabelas.add(tabelaProc);
       _simbolos.clear();
       _parametros();
       _corpoP();
+      final count =
+          _tabelas.last.parametros().length + _tabelas.last.variaveis().length;
+      c.add('DESM $count');
+      c.add('RTPR');
+      c[procedurePos] = 'DSVI ${c.length}';
       // Desempilha tabela do procedimento
       _tabelas.removeLast();
       return true;
@@ -260,7 +262,7 @@ class Parser {
   void _argumentos() {
     final ident = _textoToken();
     isKind(TokenKind.Identificador);
-    final simbolo = Simbolo(id: ident);
+    final simbolo = Simbolo(id: ident, type: 'argument');
     _simbolos.add(simbolo);
     _maisIdent();
   }
@@ -274,10 +276,9 @@ class Parser {
   }
 
   // <pfalsa> ::= else <comandos> | λ
-  bool _pFalsa(int endereco) {
+  bool _pFalsa() {
     if (maybeKind(TokenKind.ReservadaElse)) {
       _comandos();
-      _c[endereco] = 'DSVF ${_relativo++}'; // Preenche a posteriori
       return true;
     }
     return false;
@@ -307,10 +308,8 @@ class Parser {
       _variaveis(_DeclType.Argument);
       while (_simbolos.isNotEmpty) {
         final simbolo = _simbolos.removeFirst();
-        _c.add('LEIT');
-        _relativo++;
-        _c.add('ARMZ ${simbolo.address}(${simbolo.id})');
-        _relativo++;
+        c.add('LEIT');
+        c.add('ARMZ ${simbolo.address}');
       }
       isKind(TokenKind.SimboloFechaParens);
     } else if (maybeKind(TokenKind.ReservadaWrite)) {
@@ -318,31 +317,31 @@ class Parser {
       _variaveis(_DeclType.Argument);
       while (_simbolos.isNotEmpty) {
         final simbolo = _simbolos.removeFirst();
-        _c.add('CRVL ${simbolo.address}(${simbolo.id})');
-        _relativo++;
-        _c.add('IMPR');
-        _relativo++;
+        c.add('CRVL ${simbolo.address}');
+        c.add('IMPR');
       }
       isKind(TokenKind.SimboloFechaParens);
     } else if (maybeKind(TokenKind.ReservadaWhile)) {
+      final whilePos = c.length;
       _condicao();
-      _c.add('DSVF ????'); // Aloca a posição para o endereço
-      final relativo = _relativo++; // Salva a priori o retorno
       isKind(TokenKind.ReservadaDo);
+      final whileCorpoPos = c.length;
+      c.add('DSVF ????'); // Aloca a posição para o endereço
       _comandos();
-      _c.add('DSVI $relativo');
-      _c[relativo] = 'DSVF ${++_relativo}'; // Salva a posteriori o retorno
+      c.add('DSVI $whilePos');
+      c[whileCorpoPos] = 'DSVF ${c.length}'; // Salva a posteriori o retorno
       isKind(TokenKind.SimboloCifra);
     } else if (maybeKind(TokenKind.ReservadaIf)) {
       _condicao();
-      _c.add('DSVF ????'); // Aloca a posição para o endereço
-      final relativo = _relativo++; // Salva a priori o o endereço
+      final ifPos = c.length; // Salva a priori o o endereço
+      c.add('DSVF ????'); // Aloca a posição para o endereço
       isKind(TokenKind.ReservadaThen);
       _comandos();
-      _c.add('DSVI $relativo');
-      if (!_pFalsa(relativo)) {
-        _c[relativo] = 'DSVF ${++_relativo}'; // Preenche a posteriori
-      }
+      c[ifPos] = 'DSVF ${c.length + 1}';
+      final thenElsePos = c.length;
+      c.add('DSVI ????');
+      _pFalsa();
+      c[thenElsePos] = 'DSVI ${c.length}';
       isKind(TokenKind.SimboloCifra);
     } else {
       final id = _textoToken();
@@ -364,25 +363,7 @@ class Parser {
       }
       _restoIdent(identificador);
       // Verifica argumentos
-      if (identificador.category == "procedure") {
-        final parametros = identificador.table.parametros();
-        if (_simbolos.length < parametros.length) {
-          throw ParseException('falta parâmetros');
-        } else if (_simbolos.length > parametros.length) {
-          throw ParseException('parâmetros em excesso');
-        }
-        while (_simbolos.isNotEmpty) {
-          final argumento = _simbolos.removeLast();
-          final simbolo = _tabelas.last.find(argumento.id);
-          if (simbolo == null) {
-            throw ParseException('símbolo não declarado');
-          }
-          final parametro = parametros.removeLast();
-          if (simbolo.type != parametro.type) {
-            throw ParseException('tipo errado em chamada de procedimento');
-          }
-        }
-      }
+      // if (identificador.category == "procedure") {}
     }
   }
 
@@ -390,8 +371,7 @@ class Parser {
   void _restoIdent(Simbolo identificador) {
     if (maybeKind(TokenKind.SimboloAtribuicao)) {
       _expressao();
-      _c.add('ARMZ ${identificador.address}(${identificador.id})');
-      _relativo++;
+      c.add('ARMZ ${identificador.address}');
       while (_simbolos.isNotEmpty) {
         final simbolo = _simbolos.removeFirst();
         if (simbolo.type != identificador.type) {
@@ -400,7 +380,33 @@ class Parser {
         }
       }
     } else {
+      final procedurePos = c.length;
+      c.add('PUSHER');
       _listaArg();
+
+      // Verifica quantidade de argumentos
+      final parametros = identificador.table.parametros();
+      if (_simbolos.length < parametros.length) {
+        throw ParseException('falta parâmetros');
+      } else if (_simbolos.length > parametros.length) {
+        throw ParseException('parâmetros em excesso');
+      }
+
+      // Verifica ordem e tipos
+      while (_simbolos.isNotEmpty) {
+        final argumento = _simbolos.removeLast();
+        final simbolo = _tabelas.last.find(argumento.id);
+        if (simbolo == null) {
+          throw ParseException('símbolo não declarado');
+        }
+        final parametro = parametros.removeLast();
+        if (simbolo.type != parametro.type) {
+          throw ParseException('tipo errado em chamada de procedimento');
+        }
+        c.add('PARAM ${simbolo.address}');
+      }
+      c.add('CHPR ${identificador.position + 1}');
+      c[procedurePos] = 'PUSHER ${c.length}';
     }
   }
 
@@ -409,8 +415,7 @@ class Parser {
     _expressao();
     final relacao = _relacao();
     _expressao();
-    _c.add(relacao);
-    _relativo++;
+    c.add(relacao);
     var simbolo = _simbolos.removeFirst();
     if (_simbolos.any((t) => t.type != simbolo.type)) {
       throw ParseException('tipos incompatíveis em relação');
@@ -450,8 +455,7 @@ class Parser {
       return;
     }
     if (maybeKind(TokenKind.SimboloMenos)) {
-      _c.add('INVE');
-      _relativo++;
+      c.add('INVE');
       return;
     }
   }
@@ -461,8 +465,7 @@ class Parser {
     final opAd = _opAd();
     if (opAd != null) {
       _termo();
-      _c.add('$opAd');
-      _relativo++;
+      c.add('$opAd');
       _outrosTermos();
     }
   }
@@ -491,8 +494,7 @@ class Parser {
     final opMul = _opMul();
     if (opMul != null) {
       _fator();
-      _c.add('$opMul');
-      _relativo++;
+      c.add('$opMul');
       _maisFatores();
     }
   }
@@ -528,17 +530,14 @@ class Parser {
         }
       }
       _simbolos.add(identificador);
-      _c.add('CRVL ${identificador.address}($id)');
-      _relativo++;
+      c.add('CRVL ${identificador.address}');
     } else if (maybeKind(TokenKind.LiteralInteiro)) {
       _simbolos
           .add(Simbolo(id: 'literal', type: 'integer', category: 'constant'));
-      _c.add('CRCT $id');
-      _relativo++;
+      c.add('CRCT $id');
     } else if (maybeKind(TokenKind.LiteralReal)) {
       _simbolos.add(Simbolo(id: 'literal', type: 'real', category: 'constant'));
-      _c.add('CRCT $id');
-      _relativo++;
+      c.add('CRCT $id');
     } else {
       isKind(TokenKind.SimboloAbreParens);
       _expressao();

@@ -7,6 +7,15 @@ void testaParser(String source) {
   parser.parse();
 }
 
+void testaGeracaoCodigo(String source, List<String> codigo) {
+  var parser = Parser(source);
+  parser.parse();
+  for (var i = 0; i < codigo.length; i++) {
+    expect(parser.c[i], codigo[i]);
+  }
+  expect(codigo.length, parser.c.length);
+}
+
 void main() {
   test('exemplo básico', () {
     testaParser(r'''program asdf
@@ -266,7 +275,7 @@ void main() {
   });
 
   test('exemplo material geração de código', () {
-    testaParser(r'''program ex1
+    testaGeracaoCodigo(r'''program ex1
               var x, y: integer;
               procedure p
               var z: integer
@@ -276,15 +285,51 @@ void main() {
                   if x > 1 then
                       x := z
                   else
-                      y := 1;
-                      y := y * z
-                  $
+                      y := 1
+                  $;
+                  y := y * z
               end
               begin
                   read(x);
                   p;
                   write(x, y)
-              end.''');
+              end.''', <String>[
+      'INPP',
+      'ALME 1',
+      'ALME 1',
+      'DSVI 26',
+      'ALME 1',
+      'CRVL 0',
+      'ARMZ 3',
+      'CRVL 0',
+      'CRCT 1',
+      'SUBT',
+      'ARMZ 0',
+      'CRVL 0',
+      'CRCT 1',
+      'CPMA',
+      'DSVF 18',
+      'CRVL 3',
+      'ARMZ 0',
+      'DSVI 20',
+      'CRCT 1',
+      'ARMZ 1',
+      'CRVL 1',
+      'CRVL 3',
+      'MULT',
+      'ARMZ 1',
+      'DESM 1',
+      'RTPR',
+      'LEIT',
+      'ARMZ 0',
+      'PUSHER 30',
+      'CHPR 4',
+      'CRVL 0',
+      'IMPR',
+      'CRVL 1',
+      'IMPR',
+      'PARA'
+    ]);
   });
 
   test('exemplo sala de aula', () {

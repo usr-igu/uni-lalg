@@ -22,6 +22,10 @@ class TabelaDeSimbolos {
     return lines.where((t) => t.category == 'parameter').toList();
   }
 
+  List<Simbolo> variaveis() {
+    return lines.where((t) => t.category == 'variable').toList();
+  }
+
   void setType(String type) {
     lines.where((t) => t.type == null).forEach((f) => f.type = type);
   }
@@ -32,9 +36,15 @@ class Simbolo {
   String category;
   String type;
   int address;
+  int position;
   TabelaDeSimbolos table;
   Simbolo(
-      {@required this.id, this.category, this.type, this.table, this.address}) {
+      {@required this.id,
+      this.category,
+      this.type,
+      this.table,
+      this.address,
+      this.position}) {
     if (this.category != 'procedure') {
       assert(this.table == null);
     } else {
