@@ -8,6 +8,8 @@ main(List<String> arguments) {
   var parser = lalg2.Parser(source);
   try {
     parser.parse();
+    print(parser.c);
+    parser.execute();
   } on ParseException catch (e) {
     print(e.message);
     print(e.symbol);

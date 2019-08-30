@@ -4,6 +4,7 @@ import 'package:lalg2/lexer.dart';
 import 'package:lalg2/parse_exception.dart';
 import 'package:lalg2/table.dart';
 import 'package:lalg2/token.dart';
+import 'dart:io';
 
 enum _DeclType {
   Variable,
@@ -30,6 +31,120 @@ class Parser {
     _simbolos = Queue();
     c = List<String>();
     _address = 0;
+  }
+
+  void execute() {
+    var d = List<double>(32);
+    var s = 0;
+    var i = 0;
+    while (true) {
+      final parts = c[i].split(' ');
+      final instr = parts[0];
+      final data = parts.length > 1 ? double.parse(parts[1]) : null;
+      if (instr == 'CRCT') {
+        s += 1;
+        d[s] = data;
+      } else if (instr == 'CRVL') {
+        s += 1;
+        d[s] = d[data.floor()];
+      } else if (instr == 'SOMA') {
+        d[s - 1] = d[s - 1] + d[s];
+        s -= 1;
+      } else if (instr == 'SUBT') {
+        d[s - 1] = d[s - 1] - d[s];
+        s -= 1;
+      } else if (instr == 'MULT') {
+        d[s - 1] = d[s - 1] * d[s];
+        s -= 1;
+      } else if (instr == 'DIVI') {
+        d[s - 1] = d[s - 1] / d[s];
+        s -= 1;
+      } else if (instr == 'INVE') {
+        d[s] = -d[s];
+      } else if (instr == 'CPME') {
+        if (d[s - 1] < d[s]) {
+          d[s - 1] = 1;
+        } else {
+          d[s - 1] = 0;
+        }
+        s -= 1;
+      } else if (instr == 'CPMA') {
+        if (d[s - 1] > d[s]) {
+          d[s - 1] = 1;
+        } else {
+          d[s - 1] = 0;
+        }
+        s -= 1;
+      } else if (instr == 'CPIG') {
+        if (d[s - 1] == d[s]) {
+          d[s - 1] = 1;
+        } else {
+          d[s - 1] = 0;
+        }
+        s -= 1;
+      } else if (instr == 'CPES') {
+        if (d[s - 1] != d[s]) {
+          d[s - 1] = 1;
+        } else {
+          d[s - 1] = 0;
+        }
+        s -= 1;
+      } else if (instr == 'CPMI') {
+        if (d[s - 1] <= d[s]) {
+          d[s - 1] = 1;
+        } else {
+          d[s - 1] = 0;
+        }
+        s -= 1;
+      } else if (instr == 'CPMAI') {
+        if (d[s - 1] >= d[s]) {
+          d[s - 1] = 1;
+        } else {
+          d[s - 1] = 0;
+        }
+        s -= 1;
+      } else if (instr == 'ARMZ') {
+        d[data.floor()] = d[s];
+        s -= 1;
+      } else if (instr == 'DSVI') {
+        i = data.floor();
+      } else if (instr == 'DSVF') {
+        if (d[s] == 0) {
+          i = data.floor();
+        }
+        s -= 1;
+      } else if (instr == 'LEIT') {
+        s += 1;
+        final valor = stdin.readLineSync();
+        final valorDouble = double.parse(valor.trim());
+        d[s] = valorDouble;
+      } else if (instr == 'IMPR') {
+        print(d[s]);
+        s -= 1;
+      } else if (instr == 'ALME') {
+        s += data.floor();
+      } else if (instr == 'INPP') {
+        s -= 1;
+      } else if (instr == 'PARA') {
+        return;
+      } else if (instr == 'PARAM') {
+        s += 1;
+        d[s] = d[data.floor()];
+      } else if (instr == 'PUSHER') {
+        s += 1;
+        d[s] = data;
+      } else if (instr == 'CHPR') {
+        i = data.floor();
+      } else if (instr == 'DESM') {
+        s -= data.floor();
+      } else if (instr == 'RTPR') {
+        i -= d[s].floor();
+        s -= 1;
+      } else {
+        throw ParseException('instrução inválida');
+      }
+      i += 1;
+    }
   }
 
   void parse() {
@@ -175,12 +290,14 @@ class Parser {
       final tabela = _tabelas.last;
       // Gera a tabela do procedimento
       var tabelaProc = TabelaDeSimbolos();
-      tabela.push(Simbolo(
-          id: id,
-          category: 'procedure',
-          table: tabelaProc,
-          address: _address++,
-          position: c.length));
+      tabela.push(
+        Simbolo(
+            id: id,
+            category: 'procedure',
+            table: tabelaProc,
+            address: _address++,
+            position: c.length),
+      );
       // Empilha a tabela de procedimento
       c.add('DSVI ???');
       _tabelas.add(tabelaProc);
@@ -530,11 +647,12 @@ class Parser {
       _simbolos.add(identificador);
       c.add('CRVL ${identificador.address}');
     } else if (maybeKind(TokenKind.LiteralInteiro)) {
-      _simbolos
-          .add(Simbolo(id: 'literal', type: 'integer', category: 'constant'));
+      _simbolos.add(Simbolo(
+          id: 'literal', type: 'integer', category: 'constant', value: id));
       c.add('CRCT $id');
     } else if (maybeKind(TokenKind.LiteralReal)) {
-      _simbolos.add(Simbolo(id: 'literal', type: 'real', category: 'constant'));
+      _simbolos.add(Simbolo(
+          id: 'literal', type: 'real', category: 'constant', value: id));
       c.add('CRCT $id');
     } else {
       isKind(TokenKind.SimboloAbreParens);

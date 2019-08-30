@@ -36,6 +36,7 @@ class Simbolo {
   String category;
   String type;
   int address;
+  String value;
   int position;
   TabelaDeSimbolos table;
   Simbolo(
@@ -44,6 +45,7 @@ class Simbolo {
       this.type,
       this.table,
       this.address,
+      this.value,
       this.position}) {
     if (this.category != 'procedure') {
       assert(this.table == null);
