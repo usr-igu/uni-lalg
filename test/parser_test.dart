@@ -245,6 +245,26 @@ void main() {
             e.message == 'tipos incompatíveis em relação')));
   });
 
+  test('while', () {
+    testaParser(r'''program exe1
+                var n, k: integer;
+                var f1, f2, f3: real
+                begin
+                    read(n);
+                    f1 := 0.0;
+                    f2 := 1.0;
+                    k := 1;
+                    while k <= n do
+                        f3 := f1 + f2;
+                        f1 := f2;
+                        f2 := f3;
+                        k := k + 1
+                    $;
+                    write(n);
+                    write(f1)
+                end.''');
+  });
+
   test('exemplo sala de aula', () {
     testaParser(r'''program nome2
         /*exe*mplo2*/

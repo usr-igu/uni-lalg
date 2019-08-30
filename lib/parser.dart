@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:developer';
 
 import 'package:lalg2/lexer.dart';
 import 'package:lalg2/parse_exception.dart';
@@ -20,18 +19,26 @@ class Parser {
 
   Queue<Simbolo> _simbolos;
 
+  // Geração de código
+  List<String> _c;
+  int _relativo = 0;
+
   final String fonte;
 
   Parser(this.fonte) {
     _lexer = Lexer(fonte);
     _tabelas = List()..add(TabelaDeSimbolos());
     _simbolos = Queue();
+    _c = List<String>();
     _address = 0;
   }
 
   void parse() {
     _spanAtual = _lexer.next();
     _programa();
+    for (var i = 0; i < _c.length; i++) {
+      print('$i: ${_c[i]}');
+    }
   }
 
   void isKind(TokenKind kind) {
@@ -41,7 +48,8 @@ class Parser {
     if (_spanAtual.kind == kind) {
       _spanAtual = _lexer.next();
     } else {
-      throw ParseException('token não esperado');
+      throw ParseException('token não esperado',
+          symbol: _spanAtual.kind.toString(), line: _spanAtual.line);
     }
   }
 
@@ -65,10 +73,13 @@ class Parser {
   ////////////////
   // <programa> ::= program ident <corpo> .
   void _programa() {
+    _c.add('INPP');
+    _relativo++;
     isKind(TokenKind.ReservadaProgram);
     isKind(TokenKind.Identificador);
     _corpo();
     isKind(TokenKind.SimboloPontoFinal);
+    _c.add('PARA');
   }
 
   // <corpo> ::= <dc> begin <comandos> end
@@ -133,11 +144,15 @@ class Parser {
         final simbolo =
             Simbolo(id: id, category: 'variable', address: _address++);
         _simbolos.add(simbolo);
+        _c.add('ALME 1');
+        _relativo++;
         break;
       case _DeclType.Argument:
-        if (_tabelas.last.find(id) == null) {
+        final simbolo = _tabelas.last.find(id);
+        if (simbolo == null) {
           throw ParseException('símbolo não declarado', symbol: id);
         }
+        _simbolos.add(simbolo);
         break;
       case _DeclType.Parameter:
         final simbolo =
@@ -246,7 +261,7 @@ class Parser {
     final ident = _textoToken();
     isKind(TokenKind.Identificador);
     final simbolo = Simbolo(id: ident);
-    _simbolos.addFirst(simbolo);
+    _simbolos.add(simbolo);
     _maisIdent();
   }
 
@@ -259,10 +274,13 @@ class Parser {
   }
 
   // <pfalsa> ::= else <comandos> | λ
-  void _pFalsa() {
+  bool _pFalsa(int endereco) {
     if (maybeKind(TokenKind.ReservadaElse)) {
       _comandos();
+      _c[endereco] = 'DSVF ${_relativo++}'; // Preenche a posteriori
+      return true;
     }
+    return false;
   }
 
   // <comandos> ::= <comando> <mais_comandos>
@@ -287,21 +305,44 @@ class Parser {
     if (maybeKind(TokenKind.ReservadaRead)) {
       isKind(TokenKind.SimboloAbreParens);
       _variaveis(_DeclType.Argument);
+      while (_simbolos.isNotEmpty) {
+        final simbolo = _simbolos.removeFirst();
+        _c.add('LEIT');
+        _relativo++;
+        _c.add('ARMZ ${simbolo.address}(${simbolo.id})');
+        _relativo++;
+      }
       isKind(TokenKind.SimboloFechaParens);
     } else if (maybeKind(TokenKind.ReservadaWrite)) {
       isKind(TokenKind.SimboloAbreParens);
       _variaveis(_DeclType.Argument);
+      while (_simbolos.isNotEmpty) {
+        final simbolo = _simbolos.removeFirst();
+        _c.add('CRVL ${simbolo.address}(${simbolo.id})');
+        _relativo++;
+        _c.add('IMPR');
+        _relativo++;
+      }
       isKind(TokenKind.SimboloFechaParens);
     } else if (maybeKind(TokenKind.ReservadaWhile)) {
       _condicao();
+      _c.add('DSVF ????'); // Aloca a posição para o endereço
+      final relativo = _relativo++; // Salva a priori o retorno
       isKind(TokenKind.ReservadaDo);
       _comandos();
+      _c.add('DSVI $relativo');
+      _c[relativo] = 'DSVF ${++_relativo}'; // Salva a posteriori o retorno
       isKind(TokenKind.SimboloCifra);
     } else if (maybeKind(TokenKind.ReservadaIf)) {
       _condicao();
+      _c.add('DSVF ????'); // Aloca a posição para o endereço
+      final relativo = _relativo++; // Salva a priori o o endereço
       isKind(TokenKind.ReservadaThen);
       _comandos();
-      _pFalsa();
+      _c.add('DSVI $relativo');
+      if (!_pFalsa(relativo)) {
+        _c[relativo] = 'DSVF ${++_relativo}'; // Preenche a posteriori
+      }
       isKind(TokenKind.SimboloCifra);
     } else {
       final id = _textoToken();
@@ -331,7 +372,7 @@ class Parser {
           throw ParseException('parâmetros em excesso');
         }
         while (_simbolos.isNotEmpty) {
-          final argumento = _simbolos.removeFirst();
+          final argumento = _simbolos.removeLast();
           final simbolo = _tabelas.last.find(argumento.id);
           if (simbolo == null) {
             throw ParseException('símbolo não declarado');
@@ -349,10 +390,13 @@ class Parser {
   void _restoIdent(Simbolo identificador) {
     if (maybeKind(TokenKind.SimboloAtribuicao)) {
       _expressao();
+      _c.add('ARMZ ${identificador.address}(${identificador.id})');
+      _relativo++;
       while (_simbolos.isNotEmpty) {
         final simbolo = _simbolos.removeFirst();
         if (simbolo.type != identificador.type) {
-          throw ParseException('tipos incompatíveis em expressão');
+          throw ParseException('tipos incompatíveis em expressão',
+              line: _spanAtual.line);
         }
       }
     } else {
@@ -363,32 +407,34 @@ class Parser {
 // <condicao> ::= <expressao> <relacao> <expressao>
   void _condicao() {
     _expressao();
-    _relacao();
+    final relacao = _relacao();
     _expressao();
+    _c.add(relacao);
+    _relativo++;
     var simbolo = _simbolos.removeFirst();
     if (_simbolos.any((t) => t.type != simbolo.type)) {
       throw ParseException('tipos incompatíveis em relação');
+    } else {
+      _simbolos.clear();
     }
   }
 
 // <relacao>::= = | <> | >= | <= | > | <
-  void _relacao() {
+  String _relacao() {
     if (maybeKind(TokenKind.SimboloIgual)) {
-      return;
+      return 'CPIG';
+    } else if (maybeKind(TokenKind.SimboloDiferente)) {
+      return 'CPES';
+    } else if (maybeKind(TokenKind.SimboloMaiorIgual)) {
+      return 'CMAI';
+    } else if (maybeKind(TokenKind.SimboloMenorIgual)) {
+      return 'CPMI';
+    } else if (maybeKind(TokenKind.SimboloMaiorQue)) {
+      return 'CPMA';
+    } else {
+      isKind(TokenKind.SimboloMenorQue);
+      return 'CPME';
     }
-    if (maybeKind(TokenKind.SimboloDiferente)) {
-      return;
-    }
-    if (maybeKind(TokenKind.SimboloMaiorIgual)) {
-      return;
-    }
-    if (maybeKind(TokenKind.SimboloMenorIgual)) {
-      return;
-    }
-    if (maybeKind(TokenKind.SimboloMaiorQue)) {
-      return;
-    }
-    isKind(TokenKind.SimboloMenorQue);
   }
 
   // <expressao> ::= <termo> <outros_termos>
@@ -404,22 +450,31 @@ class Parser {
       return;
     }
     if (maybeKind(TokenKind.SimboloMenos)) {
+      _c.add('INVE');
+      _relativo++;
       return;
     }
   }
 
   // <outros_termos> ::= <op_ad> <termo> <outros_termos> | λ
   void _outrosTermos() {
-    if (_opAd()) {
+    final opAd = _opAd();
+    if (opAd != null) {
       _termo();
+      _c.add('$opAd');
+      _relativo++;
       _outrosTermos();
     }
   }
 
   // <op_ad> ::= + | -
-  bool _opAd() {
-    return maybeKind(TokenKind.SimboloMais) ||
-        maybeKind(TokenKind.SimboloMenos);
+  String _opAd() {
+    if (maybeKind(TokenKind.SimboloMais)) {
+      return 'SOMA';
+    } else if (maybeKind(TokenKind.SimboloMenos)) {
+      return 'SUBT';
+    }
+    return null;
   }
 
   // <termo> ::= <op_un> <fator> <mais_fatores>
@@ -430,19 +485,26 @@ class Parser {
     _maisFatores();
   }
 
-  // <mais_fatores>::= <op_mul> <fator> <mais_fatores> | λ
+  // <mais_fatores> ::= <op_mul> <fator> <mais_fatores> | λ
   // Ação semântica: Verificar tipos em expressões.
   void _maisFatores() {
-    if (_opMul()) {
+    final opMul = _opMul();
+    if (opMul != null) {
       _fator();
+      _c.add('$opMul');
+      _relativo++;
       _maisFatores();
     }
   }
 
   // <op_mul> ::= * | /
-  bool _opMul() {
-    return maybeKind(TokenKind.SimboloMultiplicao) ||
-        maybeKind(TokenKind.SimboloDivisao);
+  String _opMul() {
+    if (maybeKind(TokenKind.SimboloMultiplicao)) {
+      return 'MULT';
+    } else if (maybeKind(TokenKind.SimboloDivisao)) {
+      return 'DIVI';
+    }
+    return null;
   }
 
   // <fator> ::= ident |numero_int |numero_real | (<expressao>)
@@ -455,11 +517,17 @@ class Parser {
         throw ParseException('símbolo não declarado', symbol: id);
       }
       _simbolos.add(line);
+      _c.add('CRVL ${line.address}($id)');
+      _relativo++;
     } else if (maybeKind(TokenKind.LiteralInteiro)) {
       _simbolos
           .add(Simbolo(id: 'literal', type: 'integer', category: 'constant'));
+      _c.add('CRCT $id');
+      _relativo++;
     } else if (maybeKind(TokenKind.LiteralReal)) {
       _simbolos.add(Simbolo(id: 'literal', type: 'real', category: 'constant'));
+      _c.add('CRCT $id');
+      _relativo++;
     } else {
       isKind(TokenKind.SimboloAbreParens);
       _expressao();
