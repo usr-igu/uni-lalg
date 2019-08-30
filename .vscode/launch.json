@@ -9,6 +9,6 @@
             "program": "bin/main.dart",
             "request": "launch",
             "type": "dart"
-        }
+        },
     ]
 }

@@ -67,6 +67,7 @@ class Parser {
 
   //// REGRAS ////
   ////////////////
+
   // <programa> ::= program ident <corpo> .
   void _programa() {
     c.add('INPP');
@@ -133,7 +134,6 @@ class Parser {
   void _variaveis(_DeclType declType) {
     final id = _textoToken();
     isKind(TokenKind.Identificador);
-    // final tabela = _tabelas.last;
     // Adicionar elementos na tabela.
     switch (declType) {
       case _DeclType.Variable:
@@ -362,8 +362,6 @@ class Parser {
         }
       }
       _restoIdent(identificador);
-      // Verifica argumentos
-      // if (identificador.category == "procedure") {}
     }
   }
 
