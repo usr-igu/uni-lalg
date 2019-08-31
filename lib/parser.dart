@@ -15,10 +15,10 @@ enum _DeclType {
 class Parser {
   Lexer _lexer;
   TokenSpan _spanAtual;
-  List<TabelaDeSimbolos> _tabelas;
+  List<Table> _tabelas;
   int _address;
 
-  Queue<Simbolo> _simbolos;
+  Queue<Symbol> _simbolos;
 
   // Geração de código
   List<String> c;
@@ -27,7 +27,7 @@ class Parser {
 
   Parser(this.fonte) {
     _lexer = Lexer(fonte);
-    _tabelas = List()..add(TabelaDeSimbolos());
+    _tabelas = List()..add(Table());
     _simbolos = Queue();
     _address = 0;
     c = List<String>();
@@ -260,7 +260,7 @@ class Parser {
     switch (declType) {
       case _DeclType.Variable:
         final simbolo =
-            Simbolo(id: id, category: 'variable', address: _address++);
+            Symbol(id: id, category: 'variable', address: _address++);
         _simbolos.add(simbolo);
         break;
       case _DeclType.Argument:
@@ -272,7 +272,7 @@ class Parser {
         break;
       case _DeclType.Parameter:
         final simbolo =
-            Simbolo(id: id, category: 'parameter', address: _address++);
+            Symbol(id: id, category: 'parameter', address: _address++);
         _simbolos.add(simbolo);
         break;
     }
@@ -296,9 +296,9 @@ class Parser {
       // Tabela de símbolos mãe
       final tabela = _tabelas.last;
       // Gera a tabela do procedimento
-      var tabelaProc = TabelaDeSimbolos();
+      var tabelaProc = Table();
       tabela.push(
-        Simbolo(
+        Symbol(
             id: id,
             category: 'procedure',
             table: tabelaProc,
@@ -312,7 +312,7 @@ class Parser {
       _parametros();
       _corpoP();
       final count =
-          _tabelas.last.parametros().length + _tabelas.last.variaveis().length;
+          _tabelas.last.parameters().length + _tabelas.last.variables().length;
       c.add('DESM $count');
       c.add('RTPR');
       c[procedurePos] = 'DSVI ${c.length}';
@@ -386,7 +386,7 @@ class Parser {
   void _argumentos() {
     final ident = _textoToken();
     isKind(TokenKind.Identificador);
-    final simbolo = Simbolo(id: ident, type: 'argument');
+    final simbolo = Symbol(id: ident, type: 'argument');
     _simbolos.add(simbolo);
     _maisIdent();
   }
@@ -490,7 +490,7 @@ class Parser {
   }
 
 // <restoIdent> ::= := <expressao> | <lista_arg>
-  void _restoIdent(Simbolo identificador) {
+  void _restoIdent(Symbol identificador) {
     if (maybeKind(TokenKind.SimboloAtribuicao)) {
       _expressao();
       c.add('ARMZ ${identificador.address}');
@@ -507,7 +507,7 @@ class Parser {
       _listaArg();
 
       // Verifica quantidade de argumentos
-      final parametros = identificador.table.parametros();
+      final parametros = identificador.table.parameters();
       if (_simbolos.length < parametros.length) {
         throw ParseException('falta parâmetros');
       } else if (_simbolos.length > parametros.length) {
@@ -654,12 +654,11 @@ class Parser {
       _simbolos.add(identificador);
       c.add('CRVL ${identificador.address}');
     } else if (maybeKind(TokenKind.LiteralInteiro)) {
-      _simbolos.add(Simbolo(
-          id: 'literal', type: 'integer', category: 'constant', value: id));
+      _simbolos
+          .add(Symbol(id: 'literal', type: 'integer', category: 'constant'));
       c.add('CRCT $id');
     } else if (maybeKind(TokenKind.LiteralReal)) {
-      _simbolos.add(Simbolo(
-          id: 'literal', type: 'real', category: 'constant', value: id));
+      _simbolos.add(Symbol(id: 'literal', type: 'real', category: 'constant'));
       c.add('CRCT $id');
     } else {
       isKind(TokenKind.SimboloAbreParens);

@@ -3,51 +3,49 @@ import 'dart:collection';
 import 'package:lalg2/parse_exception.dart';
 import 'package:meta/meta.dart';
 
-class TabelaDeSimbolos {
-  List<Simbolo> lines;
-  TabelaDeSimbolos() {
-    lines = List<Simbolo>();
+class Table {
+  List<Symbol> lines;
+  Table() {
+    lines = List<Symbol>();
   }
 
-  void push(Simbolo line) {
+  void push(Symbol line) {
     if (lines.any((l) => l.id == line.id && l.category == line.category)) {
       throw ParseException('elemento já declarado');
     }
     lines.add(line);
   }
 
-  Simbolo find(String id) {
+  Symbol find(String id) {
     return lines.firstWhere((l) => l.id == id, orElse: () => null);
   }
 
-  Queue<Simbolo> parametros() {
+  Queue<Symbol> parameters() {
     return Queue.from(lines.where((t) => t.category == 'parameter'));
   }
 
-  List<Simbolo> variaveis() {
+  List<Symbol> variables() {
     return lines.where((t) => t.category == 'variable').toList();
   }
 
-  void setType(String type) {
+  void bindType(String type) {
     lines.where((t) => t.type == null).forEach((f) => f.type = type);
   }
 }
 
-class Simbolo {
+class Symbol {
   String id;
   String category;
   String type;
   int address;
-  String value;
   int position;
-  TabelaDeSimbolos table;
-  Simbolo(
+  Table table;
+  Symbol(
       {@required this.id,
       this.category,
       this.type,
       this.table,
       this.address,
-      this.value,
       this.position}) {
     if (this.category != 'procedure') {
       assert(this.table == null);
