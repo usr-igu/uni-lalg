@@ -1,4 +1,5 @@
 import 'package:lalg2/lalg2.dart';
+import 'package:lalg2/lexer_exception.dart';
 import 'package:lalg2/token.dart';
 import 'package:test/test.dart';
 
@@ -87,16 +88,18 @@ void main() {
     ]);
   });
 
-  test('floats inválidos', () {
-    testaLexer('1. 0. .1 .0', <TokenKind>[
-      TokenKind.Invalid,
-      TokenKind.Invalid,
-      TokenKind.SimboloPontoFinal,
-      TokenKind.LiteralInteiro,
-      TokenKind.SimboloPontoFinal,
-      TokenKind.LiteralInteiro
-    ]);
-  });
+  test(
+    'floats inválidos',
+    () {
+      expect(
+        () => testaLexer('1. 0. .1 .0', <TokenKind>[]),
+        throwsA(
+          predicate(
+              (e) => e is LexerException && e.message == 'token inválido'),
+        ),
+      );
+    },
+  );
 
   test('todos as keywords em uma linha', () {
     testaLexer(

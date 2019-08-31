@@ -252,7 +252,7 @@ void main() {
         throwsA(predicate((e) =>
             e is ParseException &&
             e.message == 'tipos incompatíveis em relação')));
-  });
+  }); 
 
   test('while', () {
     testaParser(r'''program exe1

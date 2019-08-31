@@ -129,7 +129,7 @@ class Parser {
       } else if (instr == 'IMPR') {
         print(d.removeLast());
       } else if (instr == 'ALME') {
-        d.add(0);
+        d.add(null);
       } else if (instr == 'INPP') {
       } else if (instr == 'PARA') {
         return;

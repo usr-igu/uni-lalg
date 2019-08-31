@@ -1,3 +1,4 @@
+import 'package:lalg2/lexer_exception.dart';
 import 'package:lalg2/token.dart';
 
 enum _Estado {
@@ -219,8 +220,8 @@ class Lexer {
           state = _Estado.InicioComentarioBloco2;
           break;
         case _Estado.Invalido:
-          kind = TokenKind.Invalid;
-          break loop;
+          throw LexerException('token inválido',
+              symbol: source.substring(start, _position - start), line: _line);
       }
       _position++;
     }
