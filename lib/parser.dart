@@ -1,10 +1,10 @@
 import 'dart:collection';
+import 'dart:io';
 
 import 'package:lalg2/lexer.dart';
 import 'package:lalg2/parse_exception.dart';
 import 'package:lalg2/table.dart';
 import 'package:lalg2/token.dart';
-import 'dart:io';
 
 enum _DeclType {
   Variable,
@@ -29,8 +29,8 @@ class Parser {
     _lexer = Lexer(fonte);
     _tabelas = List()..add(TabelaDeSimbolos());
     _simbolos = Queue();
-    c = List<String>();
     _address = 0;
+    c = List<String>();
   }
 
   void execute() {
@@ -38,7 +38,7 @@ class Parser {
     var i = 0;
     while (true) {
       final parts = c[i].split(' ');
-      print(parts);
+      // print(parts);
       final instr = parts[0];
       final data = parts.length > 1 ? num.parse(parts[1]) : null;
       if (instr == 'CRCT') {
@@ -516,12 +516,12 @@ class Parser {
 
       // Verifica ordem e tipos
       while (_simbolos.isNotEmpty) {
-        final argumento = _simbolos.removeLast();
+        final argumento = _simbolos.removeFirst();
         final simbolo = _tabelas.last.find(argumento.id);
         if (simbolo == null) {
           throw ParseException('símbolo não declarado');
         }
-        final parametro = parametros.removeLast();
+        final parametro = parametros.removeFirst();
         if (simbolo.type != parametro.type) {
           throw ParseException('tipo errado em chamada de procedimento');
         }

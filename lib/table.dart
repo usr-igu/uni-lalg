@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:lalg2/parse_exception.dart';
 import 'package:meta/meta.dart';
 
@@ -18,8 +20,8 @@ class TabelaDeSimbolos {
     return lines.firstWhere((l) => l.id == id, orElse: () => null);
   }
 
-  List<Simbolo> parametros() {
-    return lines.where((t) => t.category == 'parameter').toList();
+  Queue<Simbolo> parametros() {
+    return Queue.from(lines.where((t) => t.category == 'parameter'));
   }
 
   List<Simbolo> variaveis() {
