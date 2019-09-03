@@ -10,8 +10,6 @@ main(List<String> arguments) {
     parser.parse();
     parser.execute();
   } on ParseException catch (e) {
-    print(e.message);
-    print(e.symbol);
-    print(e.line);
+    print('error: ${e.message}: ${e.symbol} on line: ${e.line}');
   }
 }
