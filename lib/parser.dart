@@ -553,7 +553,7 @@ class Parser {
     } else if (maybeKind(TokenKind.SimboloDiferente)) {
       return 'CPES';
     } else if (maybeKind(TokenKind.SimboloMaiorIgual)) {
-      return 'CMAI';
+      return 'CPMAI';
     } else if (maybeKind(TokenKind.SimboloMenorIgual)) {
       return 'CPMI';
     } else if (maybeKind(TokenKind.SimboloMaiorQue)) {
